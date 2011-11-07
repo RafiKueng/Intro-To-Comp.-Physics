@@ -1,0 +1,31 @@
+\documentclass[a4paper,10pt]{article}
+%\documentclass[a4paper,10pt]{scrartcl}
+
+\usepackage[utf8x]{inputenc}
+
+\title{Introduction to Computational Physics - Excersices}
+\author{Rafael Kueng}
+\date{\today}
+
+\pdfinfo{%
+  /Title    (Introduction to Computational Physics - Excersices)
+  /Author   (Rafael Kueng)
+  /Creator  ()
+  /Producer ()
+  /Subject  ()
+  /Keywords ()
+}
+
+\begin{document}
+
+\LARGE
+\centerline{\textbf{Introduction to Computational Physics}}
+\centerline{Excersices}
+\vspace{1cm}
+\normalsize
+\centerline{Rafael Kueng, s06 707 046}
+\vspace{1cm}
+
+%\input{ex.tex}
+
+\end{document}
