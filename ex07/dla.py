@@ -34,6 +34,25 @@ HISTORY:
     v1 2011-11-14   basic implementation
  
 BUGS / TODO:
+    * implement other lattice types, maybe do it general
+        pass argument like how many neighbors:
+        - 3 = triangle
+        - 4 = square
+        - 6 = hex
+        - 0 = contium
+        pass it a start config
+        - manual
+        - seed
+        - surface (resp line in 2d)
+        adapt the starting space accordingly
+        - ring (with seed)
+        - line (with surface)
+        
+    * correct the noise reducion feature
+    * Determine the fractal dimension
+    
+    * idea: instead of using a fixed lattice, use a list of occupied places
+        is this faster??
 
 
 LICENSE:
@@ -66,6 +85,10 @@ class twoDGrid(abstractGrid):
     
     
 class squareGrid(object):
+    """
+    This is a demo implementation, with the hope, to be easyly convertet to arbitrary
+    grid shapes and starting configurations... I'ts really slow..
+    """
     def __init__(self, dim):
         self.r_rel = 1.1 # how far away (in terms of r from figure) will the particle be released 
         self.r_esc = 1.5 # how far away (in terms of r from figure) is a particle considered to be escaped
@@ -118,16 +141,13 @@ class squareGrid(object):
 
             #pos = choice(grid.getNeighbours())
             pos += array(rnd.choice([[-1,0],[+1,0],[0,-1],[0,+1]]))
-            dist = self.getDist(pos)
             #print pos, dist, self.r, self.r_esc * self.r
 
-            if  dist > self.r_esc * self.r :
+            if  self.getDist(pos) > self.r_esc * self.r :
                 #print "abort: particle escaped"
                 return False
 
-            sum = self.getNeigbourSum(pos)
-
-            if sum > 0:
+            if self.getNeigbourSum(pos) > 0:
                 self.gridAdd(pos, self.step)
                 self.update(pos)
                 self.npart += 1
@@ -158,9 +178,11 @@ class squareGrid(object):
         self.grid[pos_index[0]][pos_index[1]] = val
 
     def gridGet(self, pos):
-        pos_index = pos + array([1,1])*self.offset
+        #pos_index = pos + array([1,1])*self.offset
         #print '   gridget stat:', pos, pos_index, self.r, self.r*self.r_esc, self.getDist(pos)
-        return self.grid[pos_index[0]][pos_index[1]]
+        #return self.grid[pos_index[0]][pos_index[1]]
+        return self.grid[pos[0]+self.offset][pos[1]+self.offset]
+        
         
     def getDist(self, pos):
         return sqrt(sum(pos**2))
@@ -177,11 +199,215 @@ class squareGrid(object):
                     # you dont have to grow all the time, but arent'too big all the time
             self.offset = len(self.grid)//2
             print '   expanding grid to:', len(self.grid)
-    
-    
 
+            
+
+# ============================================================================
+            
+            
+            
+            
+class sqrG(object):
+    """This is the fast variant from the above prototype"""
+    
+    def __init__(self):
+        self.r_rel = 2 # how far away (in terms of +r from figure) will the particle be released 
+        self.r_esc = 2 # how far away (in terms of *r from figure) is a particle considered to be escaped
+
+        self.grid = [[1]] #seed in the middle
+        self.gridExpand(13)  #init a 27*27 field
+        self.npart = 1
+        self.step = 0
+        self.r = 3 # radius of figure (init to 3)
+        self.offset = len(self.grid)//2 #offset for grid element access
+        
+    def gridExpand(self, n):
+        """Expands the grid to all sides by n places"""
+        #print self.grid
+        n = int(n)
+        l = len(self.grid)
+        for col in self.grid:
+            col[l:] = [0]*n
+            col[:0] = [0]*n
+        eRow = [0]*(l+2*n)
+        #print eRow
+        self.grid[l:] = [[0]*(l+2*n) for i in range(n)] #[eRow] * n
+        self.grid[:0] = [[0]*(l+2*n) for i in range(n)] #[eRow] * n
+        #print self.grid
+        
+    def printGrid(self):
+        
+        m = array(self.grid)
+        print m
+        pl.imshow(m, interpolation='nearest')
+        pl.grid(True)
+        pl.show()
+    
+    def __str__(self):
+        return array(self.grid).__str__()
+
+    def __repr__(self):
+        return array(self.grid).__str__()
+    
+    def addParticle(self):
+        """Try to add one"""
+        self.step += 1
+        #choose starting pos
+        alpha = rnd.random() * 2*pi
+        x = int(cos(alpha) * (self.r_rel + sqrt(self.r)))
+        y = int(sin(alpha) * (self.r_rel + sqrt(self.r)))
+        pos = array([x,y])
+        off = self.offset
+        
+        while (self.grid[pos[0]+1+off][pos[1]+off]
+            + self.grid[pos[0]-1+off][pos[1]+off]
+            + self.grid[pos[0]+off][pos[1]+1+off]
+            + self.grid[pos[0]+off][pos[1]-1+off]) <= 0:
+
+            #pos = choice(grid.getNeighbours())
+            pos += array(rnd.choice([[-1,0],[+1,0],[0,-1],[0,+1]]))
+            #print pos, dist, self.r, self.r_esc * self.r
+
+            if sum(pos*pos) > self.r_esc * self.r :
+                #print "abort: particle escaped"
+                return False
+
+        self.grid[pos[0]+self.offset][pos[1]+self.offset] = self.step
+        self.update(pos)
+        self.npart += 1
+        #print "success:", pos, self.step, self.npart, self.r
+        return True
+
+    def add(self, n=1):
+        """Add n for sure"""
+        for i in range(n):
+            print "adding particle:", i
+            while not self.addParticle():
+                pass
+        #self.grid.__repr__()
+            
+
+    
+    def update(self, pos):
+        r_new = sum(pos*pos)
+        if self.r < r_new:
+            #print ' updating r:', self.r, r_new
+            self.r = r_new+4 # +2 offset as described in task, 4 since r*r
+        if len(self.grid)//2 <= sqrt(self.r)*self.r_esc+2:  # +2 for safty
+            addcells = 5 #int(r_new*self.r_esc - len(self.grid)//2) *2
+            self.gridExpand(addcells) #grow by a healthy amount, so
+                    # you dont have to grow all the time, but arent'too big all the time
+            self.offset = len(self.grid)//2
+            print '   expanding grid to:', len(self.grid)   
+
+# ============================================================================
+            
+            
+            
+            
+class sqrGNR(object):
+    """This is the fast variant from the above prototype, with noisereduction
+    doent work at the moment..."""
+    
+    def __init__(self, visits):
+        self.r_rel = 2 # how far away (in terms of +r from figure) will the particle be released 
+        self.r_esc = 2 # how far away (in terms of *r from figure) is a particle considered to be escaped
+        self.visits = visits #how many times does a site have to be visited to be occupied
+        self.grid = [[visits]] #seed in the middle
+        self.gridExpand(13)  #init a 27*27 field
+        self.npart = 1
+        self.step = 0
+        self.r = 3 # radius of figure (init to 3)
+        self.offset = len(self.grid)//2 #offset for grid element access
+        
+    def gridExpand(self, n):
+        """Expands the grid to all sides by n places"""
+        #print self.grid
+        n = int(n)
+        l = len(self.grid)
+        for col in self.grid:
+            col[l:] = [0]*n
+            col[:0] = [0]*n
+        eRow = [0]*(l+2*n)
+        #print eRow
+        self.grid[l:] = [[0]*(l+2*n) for i in range(n)] #[eRow] * n
+        self.grid[:0] = [[0]*(l+2*n) for i in range(n)] #[eRow] * n
+        #print self.grid
+        
+    def printGrid(self):
+        
+        m = array(self.grid) // self.visits
+        print m
+        pl.imshow(m, interpolation='nearest')
+        pl.grid(True)
+        pl.show()
+    
+    def __str__(self):
+        return array(self.grid).__str__()
+
+    def __repr__(self):
+        return array(self.grid).__str__()
+    
+    def addParticle(self):
+        """Try to add one"""
+        self.step += 1
+        #choose starting pos
+        alpha = rnd.random() * 2*pi
+        x = int(cos(alpha) * (self.r_rel + sqrt(self.r)))
+        y = int(sin(alpha) * (self.r_rel + sqrt(self.r)))
+        pos = array([x,y])
+        off = self.offset
+        
+        while (self.grid[pos[0]+1+off][pos[1]+off] < self.visits and
+            self.grid[pos[0]-1+off][pos[1]+off] < self.visits and
+            + self.grid[pos[0]+off][pos[1]+1+off] < self.visits and
+            + self.grid[pos[0]+off][pos[1]-1+off] < self.visits):
+
+            #pos = choice(grid.getNeighbours())
+            pos += array(rnd.choice([[-1,0],[+1,0],[0,-1],[0,+1]]))
+            #print pos, dist, self.r, self.r_esc * self.r
+
+            if sum(pos*pos) > self.r_esc * self.r :
+                #print "abort: particle escaped"
+                return False
+
+        if self.grid[pos[0]+self.offset][pos[1]+self.offset] < self.visits:
+            self.grid[pos[0]+self.offset][pos[1]+self.offset] += 1
+            return False
+    
+        self.grid[pos[0]+self.offset][pos[1]+self.offset] = self.step * self.visits
+            
+        self.update(pos)
+        self.npart += 1
+        #print "success:", pos, self.step, self.npart, self.r
+        return True
+
+    def add(self, n=1):
+        """Add n for sure"""
+        for i in range(n):
+            print "adding particle:", i
+            while not self.addParticle():
+                pass
+        #self.grid.__repr__()
+            
+
+    
+    def update(self, pos):
+        r_new = sum(pos*pos)
+        if self.r < r_new:
+            #print ' updating r:', self.r, r_new
+            self.r = r_new+4 # +2 offset as described in task, 4 since r*r
+        if len(self.grid)//2 <= sqrt(self.r)*self.r_esc+2:  # +2 for safty
+            addcells = 5 #int(r_new*self.r_esc - len(self.grid)//2) *2
+            self.gridExpand(addcells) #grow by a healthy amount, so
+                    # you dont have to grow all the time, but arent'too big all the time
+            self.offset = len(self.grid)//2
+            print '   expanding grid to:', len(self.grid)               
+            
 def main():
-    pass
+    s = sqrG()
+    s.add(5000)
+    s.printGrid()
 
 
 
