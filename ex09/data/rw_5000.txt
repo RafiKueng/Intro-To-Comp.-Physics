@@ -1,0 +1,10 @@
+N= 10, <R2>=   9.65, delta= 0.14, error= 1.4%
+N= 20, <R2>=  20.17, delta= 0.28, error= 1.4%
+N= 30, <R2>=  29.47, delta= 0.40, error= 1.4%
+N= 40, <R2>=  40.10, delta= 0.56, error= 1.4%
+N= 50, <R2>=  49.78, delta= 0.70, error= 1.4%
+N= 60, <R2>=  59.84, delta= 0.85, error= 1.4%
+N= 70, <R2>=  70.40, delta= 0.97, error= 1.4%
+N= 80, <R2>=  81.27, delta= 1.13, error= 1.4%
+N= 90, <R2>=  90.59, delta= 1.26, error= 1.4%
+N=100, <R2>=  96.31, delta= 1.33, error= 1.4%
